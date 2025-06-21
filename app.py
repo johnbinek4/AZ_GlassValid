@@ -1,5 +1,5 @@
 import streamlit as st
-from model_handlers import front, leftSide, leftSideMirror, back, rightSide, rightSideMirror
+from modelHandlers import front, leftSide, leftSideMirror, back, rightSide, rightSideMirror
 
 # Setup
 st.set_page_config(page_title="Image Validator", layout="centered")
