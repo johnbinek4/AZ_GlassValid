@@ -6,7 +6,7 @@ st.title("📷 Car Angle Validator")
 
 labels = ["front", "leftSide", "leftSideMirror", "back", "rightSide", "rightSideMirror"]
 
-# === Initialize session state ===
+# === Session state setup ===
 if "selected_label" not in st.session_state:
     st.session_state["selected_label"] = None
 if "awaiting_photo" not in st.session_state:
@@ -18,26 +18,31 @@ if "photo_uploaded" not in st.session_state:
 if "camera_key" not in st.session_state:
     st.session_state["camera_key"] = "default"
 
-# === Handle button selection ===
+# === Label selector resets everything for new photo ===
 def select_label(label):
     st.session_state["selected_label"] = label
     st.session_state["awaiting_photo"] = True
     st.session_state["photo_uploaded"] = None
-    st.session_state["camera_key"] = f"camera_{label}"  # reset camera
+    st.session_state["camera_key"] = f"camera_{label}"
 
-# === Button grid with ✅ icons ===
+# === Button grid with inline status icon ===
 columns = st.columns(3)
 for i, label in enumerate(labels):
     with columns[i % 3]:
-        button_col, status_col = st.columns([4, 1])
-        with button_col:
+        col_button, col_icon = st.columns([5, 1])
+        with col_button:
             if st.button(label, key=label, use_container_width=True):
                 select_label(label)
-        with status_col:
-            if st.session_state["validation_results"].get(label) == "accepted":
+        with col_icon:
+            result = st.session_state["validation_results"][label]
+            if result == "accepted":
                 st.markdown("✅")
+            elif result == "rejected":
+                st.markdown("❌")
+            else:
+                st.markdown("")  # keep space aligned
 
-# === Show camera input if needed ===
+# === Camera section ===
 if st.session_state["awaiting_photo"]:
     label = st.session_state["selected_label"]
     st.subheader(f"Take a photo for: **{label}**")
@@ -47,7 +52,7 @@ if st.session_state["awaiting_photo"]:
         image_bytes = photo.getvalue()
         st.session_state["photo_uploaded"] = image_bytes
 
-        # Run model based on label
+        # Match label to model handler
         if label == "front":
             result = front.validate(image_bytes)
         elif label == "leftSide":
@@ -63,7 +68,7 @@ if st.session_state["awaiting_photo"]:
         else:
             result = "❌ Unknown label."
 
-        # Handle model response
+        # Show result and update icon
         if "accepted" in result.lower():
             st.success(result)
             st.session_state["validation_results"][label] = "accepted"
