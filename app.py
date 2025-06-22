@@ -1,12 +1,14 @@
 import streamlit as st
 from modelHandlers import front, leftSide, leftSideMirror, back, rightSide, rightSideMirror
 
+# Streamlit setup
 st.set_page_config(page_title="Car Angle Validator", layout="centered")
 st.title("📷 Car Angle Validator")
 
+# Labels
 labels = ["front", "leftSide", "leftSideMirror", "back", "rightSide", "rightSideMirror"]
 
-# Session state init
+# Initialize session state
 if "selected_label" not in st.session_state:
     st.session_state.selected_label = None
 if "awaiting_photo" not in st.session_state:
@@ -16,23 +18,23 @@ if "validation_results" not in st.session_state:
 if "camera_key" not in st.session_state:
     st.session_state.camera_key = "default"
 
-# Create buttons + icons layout
+# Render buttons with status icons
 for label in labels:
     col_button, col_status = st.columns([5, 1])
     with col_button:
         if st.button(label, use_container_width=True):
             st.session_state.selected_label = label
             st.session_state.awaiting_photo = True
-            st.session_state.camera_key = f"camera_{label}"
+            st.session_state.camera_key = f"camera_{label}"  # resets camera
 
     with col_status:
         result = st.session_state.validation_results.get(label)
         if result == "accepted":
-            st.markdown("✅", unsafe_allow_html=True)
+            st.markdown("✅")
         elif result == "rejected":
-            st.markdown("❌", unsafe_allow_html=True)
+            st.markdown("❌")
 
-# Camera + validation logic
+# Show camera if needed
 if st.session_state.awaiting_photo:
     label = st.session_state.selected_label
     st.subheader(f"Take a photo for: {label}")
@@ -41,9 +43,11 @@ if st.session_state.awaiting_photo:
     photo = st.camera_input("Capture Image", key=st.session_state.camera_key)
 
     if photo:
+        st.info("Processing image...")
+
         image_bytes = photo.getvalue()
 
-        # Call model for that angle
+        # Route to the correct model
         if label == "front":
             result = front.validate(image_bytes)
         elif label == "leftSide":
@@ -59,7 +63,7 @@ if st.session_state.awaiting_photo:
         else:
             result = "No model available."
 
-        # Update status
+        # Set status
         if "accepted" in result.lower():
             st.success(result)
             st.session_state.validation_results[label] = "accepted"
@@ -67,6 +71,6 @@ if st.session_state.awaiting_photo:
             st.error(result)
             st.session_state.validation_results[label] = "rejected"
         else:
-            st.error("❌ Unable to validate image.")
+            st.error("❌ Could not determine result.")
 
         st.session_state.awaiting_photo = False
