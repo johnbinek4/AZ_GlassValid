@@ -60,7 +60,7 @@ def train_model_for_angle(angle_name, data_dir, save_dir="models", epochs=10, ba
 
         print(f"[{angle_name}] Epoch {epoch+1}/{epochs}, Loss: {total_loss:.4f}")
 
-    torch.save(model, save_path)
+    torch.save(model.state_dict(), save_path)
     print(f"[{angle_name}] Model saved to: {save_path}")
 
 # === Train models for all angles ===
