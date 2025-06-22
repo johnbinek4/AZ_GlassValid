@@ -54,19 +54,36 @@ function App() {
   };
 
   const capturePhoto = () => {
+    console.log('Attempting to capture photo...');
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
 
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      context.drawImage(video, 0, 0);
-
-      canvas.toBlob((blob) => {
-        setCapturedImage(blob);
-        stopCamera();
-      }, 'image/jpeg', 0.8);
+      console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight);
+      
+      // Use video's actual dimensions
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      
+      console.log('Canvas dimensions set to:', canvas.width, 'x', canvas.height);
+      
+      try {
+        context.drawImage(video, 0, 0);
+        console.log('Image drawn to canvas successfully');
+        
+        canvas.toBlob((blob) => {
+          console.log('Blob created, size:', blob.size);
+          setCapturedImage(blob);
+          stopCamera();
+        }, 'image/jpeg', 0.8);
+      } catch (err) {
+        console.error('Error capturing photo:', err);
+        setError('Failed to capture photo. Please try again.');
+      }
+    } else {
+      console.error('Video or canvas ref not available');
+      setError('Camera not ready. Please try again.');
     }
   };
 
@@ -130,6 +147,32 @@ function App() {
       }
     };
   }, [stream]);
+
+  // Add new useEffect to handle video element
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      const video = videoRef.current;
+      
+      // Ensure video starts playing when stream is ready
+      const handleLoadedMetadata = () => {
+        console.log('Video metadata loaded, attempting to play...');
+        video.play().catch(err => {
+          console.error('Video play failed:', err);
+        });
+      };
+
+      video.addEventListener('loadedmetadata', handleLoadedMetadata);
+      
+      // Try to play immediately as well
+      video.play().catch(err => {
+        console.log('Initial play failed, waiting for metadata...');
+      });
+
+      return () => {
+        video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      };
+    }
+  }, [stream, isCameraActive]);
 
   return (
     <div className="container">
