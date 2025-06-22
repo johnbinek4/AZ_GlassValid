@@ -18,29 +18,29 @@ if "photo_uploaded" not in st.session_state:
 if "camera_key" not in st.session_state:
     st.session_state["camera_key"] = "default"
 
-# === Handle angle selection ===
+# === Selection logic ===
 def select_label(label):
     st.session_state["selected_label"] = label
     st.session_state["awaiting_photo"] = True
     st.session_state["photo_uploaded"] = None
     st.session_state["camera_key"] = f"camera_{label}"
 
-# === Mobile-friendly single-column layout ===
+# === 6-row layout: 2 columns (button + status icon) ===
 for label in labels:
-    row = st.columns([5, 1])  # 5/6 for button, 1/6 for icon
-    with row[0]:
+    col_button, col_status = st.columns([5, 1])  # wide button, narrow status
+    with col_button:
         if st.button(label, key=label, use_container_width=True):
             select_label(label)
-    with row[1]:
+    with col_status:
         result = st.session_state["validation_results"].get(label)
         if result == "accepted":
             st.markdown("✅")
         elif result == "rejected":
             st.markdown("❌")
         else:
-            st.markdown("")
+            st.markdown(" ")  # maintain alignment
 
-# === Show camera input when button is selected ===
+# === Camera input when label selected ===
 if st.session_state["awaiting_photo"]:
     label = st.session_state["selected_label"]
     st.subheader(f"Take a photo for: **{label}**")
@@ -50,7 +50,7 @@ if st.session_state["awaiting_photo"]:
         image_bytes = photo.getvalue()
         st.session_state["photo_uploaded"] = image_bytes
 
-        # Call correct model
+        # Run matching model
         if label == "front":
             result = front.validate(image_bytes)
         elif label == "leftSide":
@@ -66,7 +66,7 @@ if st.session_state["awaiting_photo"]:
         else:
             result = "❌ Unknown label."
 
-        # Handle prediction result
+        # Handle model result
         if "accepted" in result.lower():
             st.success(result)
             st.session_state["validation_results"][label] = "accepted"
