@@ -6,7 +6,7 @@ st.markdown("<h1 style='text-align: center;'>📷 Car Angle Validator</h1>", uns
 
 labels = ["front", "leftSide", "leftSideMirror", "back", "rightSide", "rightSideMirror"]
 
-# Session setup
+# Initialize session
 if "selected_label" not in st.session_state:
     st.session_state["selected_label"] = None
 if "awaiting_photo" not in st.session_state:
@@ -16,24 +16,42 @@ if "validation_results" not in st.session_state:
 if "camera_key" not in st.session_state:
     st.session_state["camera_key"] = "default"
 
-# Button + Icon layout
+# Custom button layout using HTML
 for label in labels:
-    col_button, col_icon = st.columns([3, 1])
-    with col_button:
-        if st.button(label, use_container_width=True):
-            st.session_state["selected_label"] = label
-            st.session_state["awaiting_photo"] = True
-            st.session_state["camera_key"] = f"camera_{label}"
-    with col_icon:
-        result = st.session_state["validation_results"].get(label)
-        if result == "accepted":
-            st.markdown("✅", unsafe_allow_html=True)
-        elif result == "rejected":
-            st.markdown("❌", unsafe_allow_html=True)
-        else:
-            st.markdown("")
+    status = st.session_state["validation_results"].get(label)
+    status_icon = ""
+    if status == "accepted":
+        status_icon = "✅"
+    elif status == "rejected":
+        status_icon = "❌"
 
-# Camera and validation logic
+    button_html = f"""
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <form action="" method="post">
+                <button name="button" value="{label}" style="
+                    padding: 10px 20px;
+                    font-size: 16px;
+                    width: 70vw;
+                    max-width: 300px;
+                    border-radius: 8px;
+                    background-color: #262730;
+                    color: white;
+                    border: 1px solid #444;
+                ">{label}</button>
+            </form>
+            <span style="font-size: 20px; margin-left: 10px;">{status_icon}</span>
+        </div>
+    """
+    st.markdown(button_html, unsafe_allow_html=True)
+
+    # Detect if form button was clicked
+    if st.session_state.get("button") == label:
+        st.session_state["selected_label"] = label
+        st.session_state["awaiting_photo"] = True
+        st.session_state["camera_key"] = f"camera_{label}"
+        st.session_state["button"] = None  # Reset to avoid re-trigger
+
+# Camera and model evaluation
 if st.session_state.get("awaiting_photo", False):
     label = st.session_state["selected_label"]
     st.subheader(f"Take a photo for: **{label}**")
@@ -44,7 +62,6 @@ if st.session_state.get("awaiting_photo", False):
     if photo:
         image_bytes = photo.getvalue()
 
-        # Run model based on label
         if label == "front":
             result = front.validate(image_bytes)
         elif label == "leftSide":
@@ -60,7 +77,7 @@ if st.session_state.get("awaiting_photo", False):
         else:
             result = "Error: Unknown label."
 
-        # Update result and clear photo state
+        # Save validation state
         if "accepted" in result.lower():
             st.success(result)
             st.session_state["validation_results"][label] = "accepted"
