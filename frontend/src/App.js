@@ -54,7 +54,6 @@ function App() {
       setStream(null);
     }
     setIsCameraActive(false);
-    setCapturedImage(null);
   };
 
   const capturePhoto = () => {
@@ -75,11 +74,12 @@ function App() {
           if (blob) {
             console.log('Blob created, size:', blob.size);
             setCapturedImage(blob);
+            stopCamera();
           } else {
             console.error('Failed to create blob from canvas');
             setError('Could not capture image.');
+            stopCamera();
           }
-          stopCamera();
         }, 'image/jpeg', 0.8);
 
       } catch (err) {
@@ -226,7 +226,9 @@ function App() {
                   </button>
                   <button 
                     className="camera-button secondary" 
-                    onClick={() => setCapturedImage(null)}
+                    onClick={() => {
+                      setCapturedImage(null);
+                    }}
                   >
                     ❌ Cancel
                   </button>
