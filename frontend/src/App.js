@@ -16,7 +16,6 @@ function App() {
   
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  const fileInputRef = useRef(null);
 
   // Backend URL - change this to your Render deployment URL
   const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
@@ -34,7 +33,7 @@ function App() {
       setError(null);
     } catch (err) {
       console.error('Camera access denied:', err);
-      setError('Camera access denied. Please use file upload instead.');
+      setError('Camera access denied. Please try again.');
       setIsCameraActive(false);
     }
   };
@@ -62,16 +61,6 @@ function App() {
         setCapturedImage(blob);
         stopCamera();
       }, 'image/jpeg', 0.8);
-    }
-  };
-
-  const handleFileUpload = (event) => {
-    const file = event.target.files[0];
-    if (file && file.type.startsWith('image/')) {
-      setCapturedImage(file);
-      setError(null);
-    } else {
-      setError('Please select a valid image file.');
     }
   };
 
@@ -170,16 +159,6 @@ function App() {
                 <button className="camera-button" onClick={startCamera}>
                   📷 Open Camera
                 </button>
-                <label className="file-label">
-                  📁 Upload File
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    className="file-input"
-                  />
-                </label>
               </div>
             )}
 
