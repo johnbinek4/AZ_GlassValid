@@ -1,55 +1,54 @@
 import streamlit as st
 from modelHandlers import front, leftSide, leftSideMirror, back, rightSide, rightSideMirror
 
-# === Config and setup ===
+# Setup
 st.set_page_config(page_title="Car Angle Validator", layout="centered")
 st.title("📷 Car Angle Validator")
 
 labels = ["front", "leftSide", "leftSideMirror", "back", "rightSide", "rightSideMirror"]
 
-# === Initialize session state ===
+# === Session state init ===
 if "selected_label" not in st.session_state:
     st.session_state["selected_label"] = None
 if "awaiting_photo" not in st.session_state:
     st.session_state["awaiting_photo"] = False
 if "validation_results" not in st.session_state:
     st.session_state["validation_results"] = {label: None for label in labels}
+if "photo_uploaded" not in st.session_state:
+    st.session_state["photo_uploaded"] = None
 
-# === Show buttons with color status ===
+# === Clear photo when switching angles ===
+def select_label(label):
+    st.session_state["selected_label"] = label
+    st.session_state["awaiting_photo"] = True
+    st.session_state["photo_uploaded"] = None  # Clear old image
+
+# === Styled buttons with status ===
 columns = st.columns(3)
-
 for i, label in enumerate(labels):
     with columns[i % 3]:
-        # Determine color status
         result = st.session_state["validation_results"][label]
-        color = "#DDDDDD"  # default grey
         if result == "accepted":
-            color = "#4CAF50"  # green
-        elif result == "rejected":
-            color = "#FF4B4B"  # red
+            btn_style = f"background-color: #4CAF50; color: white; font-weight: bold;"
+        else:
+            btn_style = ""
 
-        # Render button
-        if st.button(label, use_container_width=True):
-            st.session_state["selected_label"] = label
-            st.session_state["awaiting_photo"] = True
+        if st.button(label, key=label, help="Tap to take a photo", use_container_width=True):
+            select_label(label)
 
-        # Colored bar under button
-        st.markdown(
-            f"<div style='background-color:{color}; height:5px; margin-top:4px; border-radius:4px'></div>",
-            unsafe_allow_html=True
-        )
+        # Optional: apply inline CSS for color if needed (Streamlit default buttons don’t support background easily)
 
-# === Camera input + model validation ===
+# === Camera input ===
 if st.session_state["awaiting_photo"]:
     label = st.session_state["selected_label"]
     st.subheader(f"Take a photo for: **{label}**")
     photo = st.camera_input("Capture Image")
 
     if photo:
-        st.info("Processing image...")
         image_bytes = photo.getvalue()
+        st.session_state["photo_uploaded"] = image_bytes
 
-        # Run validation using correct handler
+        # Call the correct model handler
         if label == "front":
             result = front.validate(image_bytes)
         elif label == "leftSide":
@@ -65,18 +64,19 @@ if st.session_state["awaiting_photo"]:
         else:
             result = "❌ Unknown label."
 
-        # Interpret result and give feedback
+        # Handle response
         if "accepted" in result.lower():
-            st.session_state["validation_results"][label] = "accepted"
             st.success(result)
+            st.session_state["validation_results"][label] = "accepted"
             st.session_state["awaiting_photo"] = False
         elif "rejected" in result.lower():
-            st.session_state["validation_results"][label] = "rejected"
             st.error(result)
+            st.session_state["validation_results"][label] = "rejected"
             if st.button("🔄 Try Again"):
                 st.session_state["awaiting_photo"] = True
+                st.session_state["photo_uploaded"] = None
             else:
                 st.session_state["awaiting_photo"] = False
         else:
-            st.error("❌ Error occurred during validation.")
+            st.error("❌ Error during validation.")
             st.session_state["awaiting_photo"] = False
