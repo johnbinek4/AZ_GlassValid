@@ -26,27 +26,21 @@ if "validation_results" not in st.session_state:
 if "photo_taken" not in st.session_state:
     st.session_state["photo_taken"] = {}
 
-# Button + status icon layout
+# Buttons (one per row)
 for label in labels:
-    status = st.session_state["validation_results"].get(label)
-    icon_html = ""
+    if st.button(label, use_container_width=True, key=f"btn_{label}"):
+        st.session_state["selected_label"] = label
+        st.session_state["awaiting_photo"] = True
+        st.session_state["photo_taken"][label] = False  # reset camera for this label
 
-    if status == "accepted":
-        icon_html = "<span style='font-size: 24px;'>✅</span>"
-    elif status == "rejected":
-        icon_html = "<span style='font-size: 24px;'>❌</span>"
+    # Status icon BELOW button
+    result = st.session_state["validation_results"].get(label)
+    if result == "accepted":
+        st.markdown("✅", unsafe_allow_html=True)
+    elif result == "rejected":
+        st.markdown("❌", unsafe_allow_html=True)
 
-    cols = st.columns([2, 1])
-    with cols[0]:
-        if st.button(label, use_container_width=True, key=f"btn_{label}"):
-            st.session_state["selected_label"] = label
-            st.session_state["awaiting_photo"] = True
-            st.session_state["photo_taken"][label] = False  # reset camera for this label
-
-    with cols[1]:
-        st.markdown(icon_html, unsafe_allow_html=True)
-
-# Handle camera input after button click
+# Camera section
 if st.session_state.get("awaiting_photo", False):
     label = st.session_state.get("selected_label")
     if label:
@@ -58,13 +52,11 @@ if st.session_state.get("awaiting_photo", False):
             st.info("Processing image...")
             image_bytes = photo.getvalue()
 
-            # Call model
             try:
                 model = model_map[label]
                 result = model.validate(image_bytes)
-            except Exception as e:
+            except Exception:
                 result = "rejected"
 
-            # Save result
             st.session_state["validation_results"][label] = result
             st.session_state["awaiting_photo"] = False
