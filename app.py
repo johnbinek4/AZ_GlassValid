@@ -6,7 +6,7 @@ st.title("📷 Car Angle Validator")
 
 labels = ["front", "leftSide", "leftSideMirror", "back", "rightSide", "rightSideMirror"]
 
-# === Session state setup ===
+# === Initialize session state ===
 if "selected_label" not in st.session_state:
     st.session_state["selected_label"] = None
 if "awaiting_photo" not in st.session_state:
@@ -18,31 +18,29 @@ if "photo_uploaded" not in st.session_state:
 if "camera_key" not in st.session_state:
     st.session_state["camera_key"] = "default"
 
-# === Label selector resets everything for new photo ===
+# === Handle angle selection ===
 def select_label(label):
     st.session_state["selected_label"] = label
     st.session_state["awaiting_photo"] = True
     st.session_state["photo_uploaded"] = None
     st.session_state["camera_key"] = f"camera_{label}"
 
-# === Button grid with inline status icon ===
-columns = st.columns(3)
-for i, label in enumerate(labels):
-    with columns[i % 3]:
-        col_button, col_icon = st.columns([5, 1])
-        with col_button:
-            if st.button(label, key=label, use_container_width=True):
-                select_label(label)
-        with col_icon:
-            result = st.session_state["validation_results"][label]
-            if result == "accepted":
-                st.markdown("✅")
-            elif result == "rejected":
-                st.markdown("❌")
-            else:
-                st.markdown("")  # keep space aligned
+# === Mobile-friendly single-column layout ===
+for label in labels:
+    row = st.columns([5, 1])  # 5/6 for button, 1/6 for icon
+    with row[0]:
+        if st.button(label, key=label, use_container_width=True):
+            select_label(label)
+    with row[1]:
+        result = st.session_state["validation_results"].get(label)
+        if result == "accepted":
+            st.markdown("✅")
+        elif result == "rejected":
+            st.markdown("❌")
+        else:
+            st.markdown("")
 
-# === Camera section ===
+# === Show camera input when button is selected ===
 if st.session_state["awaiting_photo"]:
     label = st.session_state["selected_label"]
     st.subheader(f"Take a photo for: **{label}**")
@@ -52,7 +50,7 @@ if st.session_state["awaiting_photo"]:
         image_bytes = photo.getvalue()
         st.session_state["photo_uploaded"] = image_bytes
 
-        # Match label to model handler
+        # Call correct model
         if label == "front":
             result = front.validate(image_bytes)
         elif label == "leftSide":
@@ -68,7 +66,7 @@ if st.session_state["awaiting_photo"]:
         else:
             result = "❌ Unknown label."
 
-        # Show result and update icon
+        # Handle prediction result
         if "accepted" in result.lower():
             st.success(result)
             st.session_state["validation_results"][label] = "accepted"
