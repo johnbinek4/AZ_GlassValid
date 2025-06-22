@@ -6,7 +6,7 @@ st.title("📷 Car Angle Validator")
 
 labels = ["front", "leftSide", "leftSideMirror", "back", "rightSide", "rightSideMirror"]
 
-# === Initialize session state ===
+# === Session setup ===
 if "selected_label" not in st.session_state:
     st.session_state["selected_label"] = None
 if "awaiting_photo" not in st.session_state:
@@ -18,39 +18,40 @@ if "photo_uploaded" not in st.session_state:
 if "camera_key" not in st.session_state:
     st.session_state["camera_key"] = "default"
 
-# === Label selection logic ===
+# === Handle angle selection ===
 def select_label(label):
     st.session_state["selected_label"] = label
     st.session_state["awaiting_photo"] = True
     st.session_state["photo_uploaded"] = None
-    st.session_state["camera_key"] = f"camera_{label}"  # Reset camera
+    st.session_state["camera_key"] = f"camera_{label}"  # Resets the camera
 
-# === Mobile-friendly layout: 2 columns (button + status) per row ===
+# === Button + icon layout (half-width button) ===
 for label in labels:
-    col1, col2 = st.columns([6, 1])
+    col1, col2 = st.columns([1, 1])
     with col1:
         if st.button(label, key=label, use_container_width=True):
             select_label(label)
     with col2:
         result = st.session_state["validation_results"].get(label)
         if result == "accepted":
-            st.markdown("### ✅")
+            st.markdown("<div style='font-size:30px;'>✅</div>", unsafe_allow_html=True)
         elif result == "rejected":
-            st.markdown("### ❌")
+            st.markdown("<div style='font-size:30px;'>❌</div>", unsafe_allow_html=True)
         else:
-            st.markdown(" ")
+            st.markdown(" ")  # Placeholder for layout alignment
 
-# === Camera input when needed ===
+# === Camera capture logic ===
 if st.session_state["awaiting_photo"]:
     label = st.session_state["selected_label"]
     st.subheader(f"Take a photo for: **{label}**")
+    st.caption("📱 Tip: Switch to back camera for better results if needed.")
     photo = st.camera_input("Capture Image", key=st.session_state["camera_key"])
 
     if photo:
         image_bytes = photo.getvalue()
         st.session_state["photo_uploaded"] = image_bytes
 
-        # Match label to model
+        # Run corresponding model
         if label == "front":
             result = front.validate(image_bytes)
         elif label == "leftSide":
