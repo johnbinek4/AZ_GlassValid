@@ -17,28 +17,27 @@ if "validation_results" not in st.session_state:
 if "photo_uploaded" not in st.session_state:
     st.session_state["photo_uploaded"] = None
 
-# === Clear photo when switching angles ===
+# === Clear photo + reset on new label ===
 def select_label(label):
     st.session_state["selected_label"] = label
     st.session_state["awaiting_photo"] = True
-    st.session_state["photo_uploaded"] = None  # Clear old image
+    st.session_state["photo_uploaded"] = None
 
-# === Styled buttons with status ===
+# === Show buttons with status icons ===
 columns = st.columns(3)
 for i, label in enumerate(labels):
     with columns[i % 3]:
         result = st.session_state["validation_results"][label]
+        status_icon = ""
         if result == "accepted":
-            btn_style = f"background-color: #4CAF50; color: white; font-weight: bold;"
-        else:
-            btn_style = ""
+            status_icon = " ✅"
+        elif result == "rejected":
+            status_icon = " ❌"
 
-        if st.button(label, key=label, help="Tap to take a photo", use_container_width=True):
+        if st.button(label + status_icon, key=label, use_container_width=True):
             select_label(label)
 
-        # Optional: apply inline CSS for color if needed (Streamlit default buttons don’t support background easily)
-
-# === Camera input ===
+# === Camera input + model call ===
 if st.session_state["awaiting_photo"]:
     label = st.session_state["selected_label"]
     st.subheader(f"Take a photo for: **{label}**")
@@ -48,7 +47,7 @@ if st.session_state["awaiting_photo"]:
         image_bytes = photo.getvalue()
         st.session_state["photo_uploaded"] = image_bytes
 
-        # Call the correct model handler
+        # Run correct model
         if label == "front":
             result = front.validate(image_bytes)
         elif label == "leftSide":
@@ -64,7 +63,7 @@ if st.session_state["awaiting_photo"]:
         else:
             result = "❌ Unknown label."
 
-        # Handle response
+        # Interpret and store result
         if "accepted" in result.lower():
             st.success(result)
             st.session_state["validation_results"][label] = "accepted"
