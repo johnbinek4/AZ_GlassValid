@@ -21,18 +21,24 @@ function App() {
   const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
 
   const startCamera = async () => {
+    console.log('Starting camera...');
     try {
+      console.log('Requesting camera permissions...');
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment' } // Use back camera
       });
+      console.log('Camera permission granted, setting up video...');
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        console.log('Video element updated with stream');
       }
       setIsCameraActive(true);
       setError(null);
+      console.log('Camera started successfully');
     } catch (err) {
       console.error('Camera access denied:', err);
+      console.error('Error details:', err.name, err.message);
       setError('Camera access denied. Please try again.');
       setIsCameraActive(false);
     }
