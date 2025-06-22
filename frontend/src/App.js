@@ -17,63 +17,33 @@ function App() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
-  // Backend URL - change this to your Render deployment URL
   const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
 
   const startCamera = async () => {
     console.log('Starting camera...');
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+
     try {
       console.log('Requesting camera permissions...');
-      
-      // Try back camera first
       let mediaStream;
       try {
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' }
-        });
-        console.log('Back camera accessed successfully');
-      } catch (backCameraError) {
-        console.log('Back camera failed, trying any camera...');
-        // Fallback to any available camera
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: true
-        });
-        console.log('Any camera accessed successfully');
+        mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        console.log('Back camera accessed');
+      } catch (err) {
+        console.warn('Back camera failed, trying any camera:', err);
+        mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        console.log('Fallback camera accessed');
       }
-      
-      console.log('Camera permission granted, setting up video...');
+
       setStream(mediaStream);
-      
-      // Set the stream on the video element immediately
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        console.log('Video element updated with stream');
-        
-        // Force the video to play
-        videoRef.current.play().then(() => {
-          console.log('Video started playing successfully');
-        }).catch(err => {
-          console.error('Video play failed:', err);
-        });
-        
-        // Add a timeout to ensure video loads
-        setTimeout(() => {
-          if (videoRef.current) {
-            console.log('Video readyState:', videoRef.current.readyState);
-            console.log('Video videoWidth:', videoRef.current.videoWidth);
-            console.log('Video videoHeight:', videoRef.current.videoHeight);
-            console.log('Video currentTime:', videoRef.current.currentTime);
-          }
-        }, 1000);
-      }
-      
       setIsCameraActive(true);
       setError(null);
-      console.log('Camera started successfully');
+
     } catch (err) {
-      console.error('Camera access denied:', err);
-      console.error('Error details:', err.name, err.message);
-      setError('Camera access denied. Please try again.');
+      console.error('Failed to get camera permissions:', err);
+      setError('Camera access denied. Please check browser permissions.');
       setIsCameraActive(false);
     }
   };
@@ -94,30 +64,31 @@ function App() {
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
 
-      console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight);
-      
-      // Use video's actual dimensions
       canvas.width = video.videoWidth || 640;
       canvas.height = video.videoHeight || 480;
       
-      console.log('Canvas dimensions set to:', canvas.width, 'x', canvas.height);
-      
       try {
-        context.drawImage(video, 0, 0);
-        console.log('Image drawn to canvas successfully');
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        console.log('Image drawn to canvas');
         
         canvas.toBlob((blob) => {
-          console.log('Blob created, size:', blob.size);
-          setCapturedImage(blob);
+          if (blob) {
+            console.log('Blob created, size:', blob.size);
+            setCapturedImage(blob);
+          } else {
+            console.error('Failed to create blob from canvas');
+            setError('Could not capture image.');
+          }
           stopCamera();
         }, 'image/jpeg', 0.8);
+
       } catch (err) {
         console.error('Error capturing photo:', err);
-        setError('Failed to capture photo. Please try again.');
+        setError('Failed to capture photo.');
       }
     } else {
       console.error('Video or canvas ref not available');
-      setError('Camera not ready. Please try again.');
+      setError('Camera not ready.');
     }
   };
 
@@ -134,10 +105,8 @@ function App() {
       formData.append('angle', selectedAngle);
 
       const response = await axios.post(`${BACKEND_URL}/validate`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        timeout: 30000, // 30 second timeout
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 30000,
       });
 
       const result = response.data.status;
@@ -150,7 +119,7 @@ function App() {
       }
     } catch (err) {
       console.error('Validation error:', err);
-      setError('Failed to validate image. Please check your connection and try again.');
+      setError('Failed to validate image. Please check your connection.');
     } finally {
       setIsLoading(false);
       setCapturedImage(null);
@@ -175,38 +144,14 @@ function App() {
   };
 
   useEffect(() => {
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, [stream]);
-
-  // Add new useEffect to handle video element
-  useEffect(() => {
-    if (videoRef.current && stream) {
-      const video = videoRef.current;
-      
-      // Ensure video starts playing when stream is ready
-      const handleLoadedMetadata = () => {
-        console.log('Video metadata loaded, attempting to play...');
-        video.play().catch(err => {
-          console.error('Video play failed:', err);
-        });
-      };
-
-      video.addEventListener('loadedmetadata', handleLoadedMetadata);
-      
-      // Try to play immediately as well
-      video.play().catch(err => {
-        console.log('Initial play failed, waiting for metadata...');
-      });
-
-      return () => {
-        video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+    if (isCameraActive && stream && videoRef.current) {
+      console.log('useEffect: Attaching stream to video element.');
+      videoRef.current.srcObject = stream;
+      videoRef.current.onloadedmetadata = () => {
+        videoRef.current.play().catch(e => console.error("Error playing video:", e));
       };
     }
-  }, [stream, isCameraActive]);
+  }, [isCameraActive, stream]);
 
   return (
     <div className="container">
@@ -216,7 +161,6 @@ function App() {
       </div>
 
       <div className="content">
-        {/* Angle Selection Grid */}
         <div className="angle-grid">
           {ANGLES.map((angle) => (
             <button
@@ -232,7 +176,6 @@ function App() {
           ))}
         </div>
 
-        {/* Camera/Upload Section */}
         {selectedAngle && (
           <div className="camera-section">
             <h3>📸 Capture {selectedAngle} Image</h3>
@@ -245,33 +188,16 @@ function App() {
               </div>
             )}
 
-            {/* Camera View */}
             {isCameraActive && (
               <div className="camera-container">
-                <div style={{ 
-                  border: '2px solid red', 
-                  padding: '10px', 
-                  margin: '10px 0',
-                  backgroundColor: '#f0f0f0'
-                }}>
-                  <p>Camera Status: ACTIVE</p>
-                  <p>Stream: {stream ? 'Connected' : 'Not Connected'}</p>
-                  <p>Video Element: {videoRef.current ? 'Ready' : 'Not Ready'}</p>
-                </div>
                 <video
                   ref={videoRef}
                   autoPlay
                   playsInline
                   muted
-                  style={{ 
-                    width: '100%', 
-                    height: 'auto', 
-                    display: 'block',
-                    border: '2px solid blue',
-                    backgroundColor: '#000'
-                  }}
+                  style={{ width: '100%', height: 'auto', display: 'block' }}
                 />
-                <canvas ref={canvasRef} />
+                <canvas ref={canvasRef} style={{ display: 'none' }} />
                 <div className="camera-controls">
                   <button className="camera-button" onClick={capturePhoto}>
                     📸 Capture
@@ -283,7 +209,6 @@ function App() {
               </div>
             )}
 
-            {/* Preview Image */}
             {capturedImage && (
               <div>
                 <img
@@ -311,7 +236,6 @@ function App() {
           </div>
         )}
 
-        {/* Messages */}
         {error && <div className="error">{error}</div>}
         {success && <div className="success">{success}</div>}
         {isLoading && <div className="loading">🔄 Processing image...</div>}
