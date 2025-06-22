@@ -18,29 +18,29 @@ if "photo_uploaded" not in st.session_state:
 if "camera_key" not in st.session_state:
     st.session_state["camera_key"] = "default"
 
-# === Selection logic ===
+# === Label selection logic ===
 def select_label(label):
     st.session_state["selected_label"] = label
     st.session_state["awaiting_photo"] = True
     st.session_state["photo_uploaded"] = None
-    st.session_state["camera_key"] = f"camera_{label}"
+    st.session_state["camera_key"] = f"camera_{label}"  # Reset camera
 
-# === 6-row layout: 2 columns (button + status icon) ===
+# === Mobile-friendly layout: 2 columns (button + status) per row ===
 for label in labels:
-    col_button, col_status = st.columns([5, 1])  # wide button, narrow status
-    with col_button:
+    col1, col2 = st.columns([6, 1])
+    with col1:
         if st.button(label, key=label, use_container_width=True):
             select_label(label)
-    with col_status:
+    with col2:
         result = st.session_state["validation_results"].get(label)
         if result == "accepted":
-            st.markdown("✅")
+            st.markdown("### ✅")
         elif result == "rejected":
-            st.markdown("❌")
+            st.markdown("### ❌")
         else:
-            st.markdown(" ")  # maintain alignment
+            st.markdown(" ")
 
-# === Camera input when label selected ===
+# === Camera input when needed ===
 if st.session_state["awaiting_photo"]:
     label = st.session_state["selected_label"]
     st.subheader(f"Take a photo for: **{label}**")
@@ -50,7 +50,7 @@ if st.session_state["awaiting_photo"]:
         image_bytes = photo.getvalue()
         st.session_state["photo_uploaded"] = image_bytes
 
-        # Run matching model
+        # Match label to model
         if label == "front":
             result = front.validate(image_bytes)
         elif label == "leftSide":
@@ -66,7 +66,7 @@ if st.session_state["awaiting_photo"]:
         else:
             result = "❌ Unknown label."
 
-        # Handle model result
+        # Handle result
         if "accepted" in result.lower():
             st.success(result)
             st.session_state["validation_results"][label] = "accepted"
