@@ -13,55 +13,38 @@ if "awaiting_photo" not in st.session_state:
     st.session_state["awaiting_photo"] = False
 if "validation_results" not in st.session_state:
     st.session_state["validation_results"] = {label: None for label in labels}
-if "photo_uploaded" not in st.session_state:
-    st.session_state["photo_uploaded"] = None
 if "camera_key" not in st.session_state:
     st.session_state["camera_key"] = "default"
 
-def select_label(label):
-    st.session_state["selected_label"] = label
-    st.session_state["awaiting_photo"] = True
-    st.session_state["photo_uploaded"] = None
-    st.session_state["camera_key"] = f"camera_{label}"
-
-# === Inline button + status row ===
+# Button + Icon layout
 for label in labels:
-    result = st.session_state["validation_results"].get(label)
-    icon_html = ""
-    if result == "accepted":
-        icon_html = "<span style='font-size: 26px; margin-left: 12px;'>✅</span>"
-    elif result == "rejected":
-        icon_html = "<span style='font-size: 26px; margin-left: 12px;'>❌</span>"
+    col_button, col_icon = st.columns([3, 1])
+    with col_button:
+        if st.button(label, use_container_width=True):
+            st.session_state["selected_label"] = label
+            st.session_state["awaiting_photo"] = True
+            st.session_state["camera_key"] = f"camera_{label}"
+    with col_icon:
+        result = st.session_state["validation_results"].get(label)
+        if result == "accepted":
+            st.markdown("✅", unsafe_allow_html=True)
+        elif result == "rejected":
+            st.markdown("❌", unsafe_allow_html=True)
+        else:
+            st.markdown("")
 
-    # Layout row using HTML
-    st.markdown(f"""
-        <div style='display: flex; align-items: center; margin-bottom: 10px;'>
-            <form action="" method="post">
-                <button name="label" value="{label}" type="submit"
-                    style='flex: 1; padding: 10px 16px; font-size: 16px; width: 100%; border-radius: 6px;'>
-                    {label}
-                </button>
-            </form>
-            {icon_html}
-        </div>
-    """, unsafe_allow_html=True)
-
-    # Manually capture form click (HTML workaround)
-    if st.session_state.get("label_submit", "") == label or st.experimental_get_query_params().get("label") == [label]:
-        select_label(label)
-
-# === Camera input logic ===
-if st.session_state["awaiting_photo"]:
+# Camera and validation logic
+if st.session_state.get("awaiting_photo", False):
     label = st.session_state["selected_label"]
     st.subheader(f"Take a photo for: **{label}**")
-    st.caption("📱 If the front camera opens, please switch to the back one manually.")
+    st.caption("📱 If the front camera opens, switch to the back one manually.")
+
     photo = st.camera_input("Capture Image", key=st.session_state["camera_key"])
 
     if photo:
         image_bytes = photo.getvalue()
-        st.session_state["photo_uploaded"] = image_bytes
 
-        # Call correct validation model
+        # Run model based on label
         if label == "front":
             result = front.validate(image_bytes)
         elif label == "leftSide":
@@ -75,19 +58,15 @@ if st.session_state["awaiting_photo"]:
         elif label == "rightSideMirror":
             result = rightSideMirror.validate(image_bytes)
         else:
-            result = "❌ Unknown label."
+            result = "Error: Unknown label."
 
-        # Save result
+        # Update result and clear photo state
         if "accepted" in result.lower():
             st.success(result)
             st.session_state["validation_results"][label] = "accepted"
         elif "rejected" in result.lower():
             st.error(result)
             st.session_state["validation_results"][label] = "rejected"
-            if st.button("🔄 Try Again"):
-                st.session_state["awaiting_photo"] = True
-                st.session_state["photo_uploaded"] = None
-                st.session_state["camera_key"] = f"camera_retry_{label}"
         else:
-            st.error("❌ Validation error.")
+            st.error("❌ Unable to validate image.")
         st.session_state["awaiting_photo"] = False
