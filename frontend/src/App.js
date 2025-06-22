@@ -104,7 +104,12 @@ function App() {
       formData.append('image', capturedImage);
       formData.append('angle', selectedAngle);
 
-      const response = await axios.post(`${BACKEND_URL}/validate`, formData, {
+      // Construct the URL safely
+      const cleanBaseURL = BACKEND_URL.endsWith('/') ? BACKEND_URL.slice(0, -1) : BACKEND_URL;
+      const url = `${cleanBaseURL}/validate`;
+      console.log('Sending validation request to:', url);
+
+      const response = await axios.post(url, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 30000,
       });
