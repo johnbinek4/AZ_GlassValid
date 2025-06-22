@@ -24,15 +24,39 @@ function App() {
     console.log('Starting camera...');
     try {
       console.log('Requesting camera permissions...');
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' } // Use back camera
-      });
+      
+      // Try back camera first
+      let mediaStream;
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        });
+        console.log('Back camera accessed successfully');
+      } catch (backCameraError) {
+        console.log('Back camera failed, trying any camera...');
+        // Fallback to any available camera
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: true
+        });
+        console.log('Any camera accessed successfully');
+      }
+      
       console.log('Camera permission granted, setting up video...');
       setStream(mediaStream);
+      
+      // Set the stream on the video element immediately
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         console.log('Video element updated with stream');
+        
+        // Force the video to play
+        videoRef.current.play().then(() => {
+          console.log('Video started playing successfully');
+        }).catch(err => {
+          console.error('Video play failed:', err);
+        });
       }
+      
       setIsCameraActive(true);
       setError(null);
       console.log('Camera started successfully');
@@ -219,6 +243,7 @@ function App() {
                   autoPlay
                   playsInline
                   muted
+                  style={{ width: '100%', height: 'auto', display: 'block' }}
                 />
                 <canvas ref={canvasRef} />
                 <div className="camera-controls">
