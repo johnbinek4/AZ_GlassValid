@@ -55,6 +55,16 @@ function App() {
         }).catch(err => {
           console.error('Video play failed:', err);
         });
+        
+        // Add a timeout to ensure video loads
+        setTimeout(() => {
+          if (videoRef.current) {
+            console.log('Video readyState:', videoRef.current.readyState);
+            console.log('Video videoWidth:', videoRef.current.videoWidth);
+            console.log('Video videoHeight:', videoRef.current.videoHeight);
+            console.log('Video currentTime:', videoRef.current.currentTime);
+          }
+        }, 1000);
       }
       
       setIsCameraActive(true);
@@ -238,12 +248,28 @@ function App() {
             {/* Camera View */}
             {isCameraActive && (
               <div className="camera-container">
+                <div style={{ 
+                  border: '2px solid red', 
+                  padding: '10px', 
+                  margin: '10px 0',
+                  backgroundColor: '#f0f0f0'
+                }}>
+                  <p>Camera Status: ACTIVE</p>
+                  <p>Stream: {stream ? 'Connected' : 'Not Connected'}</p>
+                  <p>Video Element: {videoRef.current ? 'Ready' : 'Not Ready'}</p>
+                </div>
                 <video
                   ref={videoRef}
                   autoPlay
                   playsInline
                   muted
-                  style={{ width: '100%', height: 'auto', display: 'block' }}
+                  style={{ 
+                    width: '100%', 
+                    height: 'auto', 
+                    display: 'block',
+                    border: '2px solid blue',
+                    backgroundColor: '#000'
+                  }}
                 />
                 <canvas ref={canvasRef} />
                 <div className="camera-controls">
